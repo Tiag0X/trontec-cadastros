@@ -487,7 +487,7 @@ export default function PublicFormPage({ params }: { params: Promise<{ slug: str
       <div className="max-w-3xl mx-auto space-y-8">
         
         <div className="flex flex-col items-center space-y-4 mb-8">
-          <img src="/logo.png" alt="Trontec" className="h-10" />
+          <img src="/logo.png?v=2" alt="Trontec" className="h-10" />
           <h1 className="text-xl font-medium text-center text-foreground">
             Recadastramento {condoInfo?.name}
           </h1>

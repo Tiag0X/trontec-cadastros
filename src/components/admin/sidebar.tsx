@@ -19,7 +19,7 @@ export function Sidebar() {
     <aside className="w-60 bg-sidebar flex flex-col h-full">
       <div className="h-16 flex items-center px-5 shrink-0">
         <img
-          src="/logo.png"
+          src="/logo.png?v=2"
           alt="Trontec"
           className="h-7 object-contain opacity-95"
         />

@@ -49,7 +49,7 @@ function LoginForm() {
       <div className="flex justify-center mb-8">
           {/* We use an img tag pointing to the Trontec logo */}
           <img 
-            src="/logo.png" 
+            src="/logo.png?v=2" 
             alt="Trontec Logo" 
             className="h-11 object-contain"
           />
