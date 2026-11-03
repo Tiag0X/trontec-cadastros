@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# local deployment scripts & storage
+*.mjs
+!eslint.config.mjs
+!postcss.config.mjs
+!next.config.mjs
+checkdb.ts
+trontec.zip
+/storage/
+

@@ -1,0 +1,354 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  admin
+  analyst
+  viewer
+}
+
+enum Status {
+  active
+  inactive
+}
+
+enum UnitStatus {
+  not_started
+  in_progress
+  submitted
+  under_review
+  pending
+  approved
+  rejected
+  expired
+  cancelled
+}
+
+enum TokenStatus {
+  active
+  used
+  expired
+  blocked
+  cancelled
+}
+
+enum SubmissionStatus {
+  draft
+  submitted
+  under_review
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+enum ResidentType {
+  primary_responsible
+  resident
+  minor
+  authorized
+}
+
+enum ItemStatus {
+  submitted
+  pending
+  approved
+  rejected
+  inactive
+  removed
+}
+
+enum VehicleType {
+  car
+  motorcycle
+  bike
+  electric_bike
+  other
+}
+
+enum TermType {
+  general_registration
+  privacy_policy
+  facial_authorization
+}
+
+enum AuditActor {
+  public_user
+  internal_user
+  system
+}
+
+enum ExportType {
+  residents
+  vehicles
+  photos
+  consolidated
+  full_package
+}
+
+enum JobStatus {
+  pending
+  processing
+  completed
+  failed
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  status    Status   @default(active)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  condominiums  Condominium[]
+  unitTokens    UnitToken[]
+  reviews       RegistrationSubmission[]
+  photoReviews  FacialPhoto[]
+  termsCreated  Term[]
+  exportJobs    ExportJob[]
+}
+
+model Condominium {
+  id                 String   @id @default(uuid())
+  name               String
+  slug               String   @unique
+  documentNumber     String?
+  address            String?
+  city               String?
+  state              String?
+  managerName        String?
+  managerPhone       String?
+  administratorName  String?
+  administratorPhone String?
+  logoUrl            String?
+  status             Status   @default(active)
+  createdById        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  createdBy User?  @relation(fields: [createdById], references: [id])
+  units     Unit[]
+  auditLogs AuditLog[]
+  exportJobs ExportJob[]
+}
+
+model Unit {
+  id                     String     @id @default(uuid())
+  condominiumId          String
+  block                  String?
+  unitNumber             String
+  unitType               String     @default("apartment")
+  initialResponsibleName String?
+  initialPhone           String?
+  initialEmail           String?
+  garageBoxes            String?
+  registrationStatus     UnitStatus @default(not_started)
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+
+  condominium Condominium @relation(fields: [condominiumId], references: [id], onDelete: Cascade)
+  tokens      UnitToken[]
+  submissions RegistrationSubmission[]
+  residents   Resident[]
+  vehicles    Vehicle[]
+  photos      FacialPhoto[]
+  termAccepts TermAcceptance[]
+  auditLogs   AuditLog[]
+
+  @@unique([condominiumId, block, unitNumber])
+}
+
+model UnitToken {
+  id             String      @id @default(uuid())
+  unitId         String
+  tokenHash      String      @unique
+  tokenPreview   String?
+  status         TokenStatus @default(active)
+  expiresAt      DateTime?
+  lastAccessedAt DateTime?
+  accessCount    Int         @default(0)
+  createdById    String?
+  createdAt      DateTime    @default(now())
+
+  unit      Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation(fields: [createdById], references: [id])
+  submissions RegistrationSubmission[]
+}
+
+model RegistrationSubmission {
+  id                  String           @id @default(uuid())
+  unitId              String
+  tokenId             String?
+  status              SubmissionStatus @default(draft)
+  submittedAt         DateTime?
+  reviewedById        String?
+  reviewedAt          DateTime?
+  reviewNotes         String?
+  publicObservation   String?
+  internalObservation String?
+  sourceIp            String?
+  userAgent           String?
+  garageBoxes         String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  unit      Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  token     UnitToken? @relation(fields: [tokenId], references: [id])
+  reviewedBy User?     @relation(fields: [reviewedById], references: [id])
+  
+  residents Resident[]
+  vehicles  Vehicle[]
+  photos    FacialPhoto[]
+  termAccepts TermAcceptance[]
+}
+
+model Resident {
+  id                   String       @id @default(uuid())
+  submissionId         String
+  unitId               String
+  fullName             String
+  cpf                  String?
+  rg                   String?
+  birthDate            DateTime?    @db.Date
+  phone                String?
+  phone2               String?
+  email                String?
+  relationshipToUnit   String
+  residentType         ResidentType @default(resident)
+  emergencyContactName String?
+  emergencyContactPhone String?
+  status               ItemStatus   @default(submitted)
+  rejectionReason      String?
+  password             String?
+  securityPassword     String?
+  contactOrder         Int?
+  tagQuantity          Int          @default(0)
+  remoteQuantity       Int          @default(0)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  submission RegistrationSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  unit       Unit                   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  vehicles   Vehicle[]
+  photos     FacialPhoto[]
+  termAccepts TermAcceptance[]
+}
+
+model Vehicle {
+  id              String      @id @default(uuid())
+  submissionId    String
+  unitId          String
+  residentId      String?
+  plate           String
+  vehicleType     VehicleType
+  brand           String?
+  model           String?
+  color           String?
+  parkingSpot     String?
+  status          ItemStatus  @default(submitted)
+  rejectionReason String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  submission RegistrationSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  unit       Unit                   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  resident   Resident?              @relation(fields: [residentId], references: [id], onDelete: SetNull)
+}
+
+model FacialPhoto {
+  id               String     @id @default(uuid())
+  residentId       String
+  submissionId     String
+  unitId           String
+  filePath         String
+  originalFileName String?
+  mimeType         String?
+  fileSize         Int?
+  status           ItemStatus @default(submitted)
+  rejectionReason  String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdAt        DateTime   @default(now())
+
+  resident   Resident               @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  submission RegistrationSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  unit       Unit                   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  reviewedBy User?                  @relation(fields: [reviewedById], references: [id])
+}
+
+model Term {
+  id          String   @id @default(uuid())
+  type        TermType
+  version     String
+  title       String
+  content     String   @db.Text
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  createdBy    User?            @relation(fields: [createdById], references: [id])
+  termAccepts  TermAcceptance[]
+}
+
+model TermAcceptance {
+  id             String   @id @default(uuid())
+  termId         String
+  submissionId   String
+  residentId     String?
+  unitId         String
+  acceptedByName String
+  acceptedByCpf  String?
+  ip             String?
+  userAgent      String?
+  acceptedAt     DateTime @default(now())
+
+  term       Term                   @relation(fields: [termId], references: [id])
+  submission RegistrationSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  resident   Resident?              @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  unit       Unit                   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id             String     @id @default(uuid())
+  actorType      AuditActor
+  actorId        String?
+  actorName      String?
+  action         String
+  entityType     String
+  entityId       String?
+  condominiumId  String?
+  unitId         String?
+  previousData   String?    @db.Text
+  newData        String?    @db.Text
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime   @default(now())
+
+  condominium Condominium? @relation(fields: [condominiumId], references: [id])
+  unit        Unit?        @relation(fields: [unitId], references: [id])
+}
+
+model ExportJob {
+  id            String     @id @default(uuid())
+  condominiumId String
+  exportType    ExportType
+  status        JobStatus  @default(pending)
+  filePath      String?
+  requestedById String?
+  requestedAt   DateTime   @default(now())
+  completedAt   DateTime?
+  errorMessage  String?
+
+  condominium Condominium @relation(fields: [condominiumId], references: [id])
+  requestedBy User?       @relation(fields: [requestedById], references: [id])
+}
